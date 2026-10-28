@@ -147,7 +147,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          "$RUNNER_TEMP/lychee" --verbose --no-progress --include-fragments --index-files index.html --root-dir "$PWD" \
+          "$RUNNER_TEMP/lychee" -vv --no-progress --include-fragments --index-files index.html --root-dir "$PWD" \
             --max-retries 3 '*.html' '*.md'
 
   typos:
