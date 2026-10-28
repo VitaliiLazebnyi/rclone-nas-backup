@@ -36,7 +36,7 @@ jobs:
       - name: html-validate
         run: node_modules/.bin/html-validate --max-warnings 0 '*.html'
       - name: W3C Nu validator (HTML, CSS and SVG; warnings are errors)
-        run: java -jar node_modules/vnu-jar/build/dist/vnu.jar --Werror --also-check-css --also-check-svg *.html *.css *.svg
+        run: java -jar node_modules/vnu-jar/build/dist/vnu.jar --Werror --also-check-css --also-check-svg ./*.html ./*.css ./*.svg
 
   lint:
     name: Prettier, Stylelint, markdownlint

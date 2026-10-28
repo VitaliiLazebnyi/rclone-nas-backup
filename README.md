@@ -43,7 +43,7 @@ Notes:
 ```sh
 npm ci
 node_modules/.bin/html-validate --max-warnings 0 '*.html'
-java -jar node_modules/vnu-jar/build/dist/vnu.jar --Werror --also-check-css --also-check-svg *.html *.css *.svg
+java -jar node_modules/vnu-jar/build/dist/vnu.jar --Werror --also-check-css --also-check-svg ./*.html ./*.css ./*.svg
 node_modules/.bin/prettier --check .
 node_modules/.bin/stylelint --max-warnings 0 '**/*.css'
 node_modules/.bin/markdownlint-cli2 '**/*.md'
