@@ -1,0 +1,7 @@
+{
+  "standard": "WCAG2AA",
+  "runners": ["axe"],
+  "rules": ["target-size"],
+  "includeWarnings": true,
+  "level": "warning"
+}
