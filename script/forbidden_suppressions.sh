@@ -12,11 +12,11 @@ files=$(git ls-files -z -- . ':(exclude)*.md' ':(exclude)script/forbidden_suppre
 
 status=0
 check() {
-  local description=$1 pattern=$2 scope=${3:-.}
+  local description=${1} pattern=${2} scope=${3:-.}
   local hits
-  hits=$(printf '%s\n' "$files" | grep -E "^${scope}" | xargs -r grep -nEHi -e "$pattern" -- || true)
-  if [ -n "$hits" ]; then
-    printf 'Forbidden (%s):\n%s\n\n' "$description" "$hits"
+  hits=$(printf '%s\n' "${files}" | grep -E "^${scope}" | xargs -r grep -nEHi -e "${pattern}" -- || true)
+  if [[ -n "${hits}" ]]; then
+    printf 'Forbidden (%s):\n%s\n\n' "${description}" "${hits}"
     status=1
   fi
 }
@@ -41,10 +41,10 @@ check 'markdownlint rule switched off' ': *false' '\.markdownlint'
 # Files that silence a tool wholesale.
 for ignore in .lycheeignore .eslintignore .stylelintignore .markdownlintignore .gitleaksignore .typos.toml \
   _typos.toml typos.toml .gitleaks.toml; do
-  if printf '%s\n' "$files" | grep -qxF "$ignore"; then
-    printf 'Forbidden (tool ignore or override file): %s\n\n' "$ignore"
+  if printf '%s\n' "${files}" | grep -qxF "${ignore}"; then
+    printf 'Forbidden (tool ignore or override file): %s\n\n' "${ignore}"
     status=1
   fi
 done
 
-exit "$status"
+exit "${status}"

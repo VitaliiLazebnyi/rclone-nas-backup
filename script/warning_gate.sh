@@ -6,6 +6,8 @@
 # itself, whose own log quotes the pattern).
 set -euo pipefail
 
+: "${GH_TOKEN:?}" "${GITHUB_REPOSITORY:?}" "${GITHUB_RUN_ID:?}" "${GATE_JOB_NAME:?}"
+
 # Case-insensitive: "npm warn", "[warn]", "Warning:", "WARNING", "deprecated", "DEPRECATION", "::warning",
 # "##[warning]" and GitHub's "Node.js 20 actions are deprecated" all match. Neither "warnings" (as in
 # "--max-warnings 0") nor an option named "--warning=..." (tar, run by the setup actions) does.
@@ -16,19 +18,19 @@ jobs=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_I
 
 status=0
 while IFS=$'\t' read -r id name; do
-  [ -n "$id" ] || continue
+  [[ -n "${id}" ]] || continue
   # Downloaded with curl: depending on its version, gh refuses to print a log that contains terminal escape
   # sequences (colored tool output).
   log=$(curl --fail --silent --show-error --location \
     --header "Authorization: Bearer ${GH_TOKEN}" --header 'Accept: application/vnd.github+json' \
     "${GITHUB_API_URL:-https://api.github.com}/repos/${GITHUB_REPOSITORY}/actions/jobs/${id}/logs")
-  hits=$(printf '%s\n' "$log" | grep -niE -e "$pattern" || true)
-  if [ -n "$hits" ]; then
-    printf '::error::Warnings in the log of job "%s"\n%s\n\n' "$name" "$hits"
+  hits=$(printf '%s\n' "${log}" | grep -niE -e "${pattern}" || true)
+  if [[ -n "${hits}" ]]; then
+    printf '::error::Warnings in the log of job "%s"\n%s\n\n' "${name}" "${hits}"
     status=1
   else
-    printf 'No warnings in the log of job "%s"\n' "$name"
+    printf 'No warnings in the log of job "%s"\n' "${name}"
   fi
-done <<< "$jobs"
+done <<< "${jobs}"
 
-exit "$status"
+exit "${status}"
