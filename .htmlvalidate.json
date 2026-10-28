@@ -1,0 +1,20 @@
+{
+  "$schema": "https://html-validate.org/schemas/config.json",
+  "root": true,
+  "extends": ["html-validate:recommended", "html-validate:document"],
+  "rules": {
+    "allowed-links": "error",
+    "attr-pattern": "error",
+    "attr-quotes": ["error", { "style": "double", "unquoted": false }],
+    "class-pattern": "error",
+    "deprecated-rule": "error",
+    "doctype-style": ["error", { "style": "lowercase" }],
+    "id-pattern": "error",
+    "name-pattern": "error",
+    "no-style-tag": "error",
+    "no-unknown-attributes": "error",
+    "no-unknown-elements": "error",
+    "require-csp-nonce": "error",
+    "void-style": ["error", { "style": "omit" }]
+  }
+}
