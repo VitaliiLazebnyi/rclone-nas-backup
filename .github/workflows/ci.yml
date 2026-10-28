@@ -14,6 +14,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Sets git's initial branch name for the repository actions/checkout initializes; without it, git prints a
+# hint about the unset default ("...which will suppress this warning").
+env:
+  GIT_CONFIG_COUNT: 1
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
+
 jobs:
   html:
     name: HTML (html-validate, W3C Nu validator)

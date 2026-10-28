@@ -7,9 +7,9 @@
 set -euo pipefail
 
 # Case-insensitive: "npm warn", "[warn]", "Warning:", "WARNING", "deprecated", "DEPRECATION", "::warning",
-# "##[warning]" and GitHub's "Node.js 20 actions are deprecated" all match. "warnings" (as in "--max-warnings 0")
-# does not.
-pattern='\bwarn(ing)?\b|deprecate|deprecation'
+# "##[warning]" and GitHub's "Node.js 20 actions are deprecated" all match. Neither "warnings" (as in
+# "--max-warnings 0") nor an option named "--warning=..." (tar, run by the setup actions) does.
+pattern='(^|[^-[:alnum:]_])warn(ing)?\b|deprecate|deprecation'
 
 jobs=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs?per_page=100" \
   --jq ".jobs[] | select(.name != \"${GATE_JOB_NAME}\" and .conclusion != \"skipped\") | \"\(.id)\t\(.name)\"")
