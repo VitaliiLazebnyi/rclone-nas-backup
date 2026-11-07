@@ -1,0 +1,10 @@
+# The tools that CI downloads with script/install_tools.sh (release binaries for linux x86_64, and npm from the
+# npm registry), each pinned to a version and to its SHA-256. script/outdated_tools.sh fails while any version is
+# not the newest release.
+# tool                version  sha256
+actionlint            1.7.12   8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+editorconfig-checker  4.0.2    44efaef3ed14c6ab52eb87481d78e5e5c204796dccf26e2f4598a61ba17f8003
+gitleaks              8.30.1   551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+lychee                0.24.2   1f4e0ef7f6554a6ed33dd7ac144fb2e1bbed98598e7af973042fc5cd43951c9a
+npm                   12.2.2   07fecbf753e2c3bc10ebeb3e9ed8738f6a0cc1292998b79e2e9f1dd2a5525e0c
+shfmt                 3.14.1   76e77641faa025814b77f153b29796b8e6fa2fca03e0c76a691608b86c7ea7bf

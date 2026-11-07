@@ -1,7 +1,0 @@
-{
-  "extends": ["stylelint-config-standard"],
-  "reportDescriptionlessDisables": true,
-  "reportInvalidScopeDisables": true,
-  "reportNeedlessDisables": true,
-  "reportUnscopedDisables": true
-}

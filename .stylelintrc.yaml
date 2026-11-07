@@ -1,0 +1,59 @@
+---
+# Stylelint: stylelint-config-standard, plus every rule that it leaves off and that works without a project
+# vocabulary to configure. The rules still off are listed at the end of this file with the reason.
+extends: [stylelint-config-standard]
+reportDescriptionlessDisables: true
+reportInvalidScopeDisables: true
+reportNeedlessDisables: true
+reportUnscopedDisables: true
+rules:
+  color-hex-alpha: never
+  color-named: never
+  # Colors are written with rgb() (color-no-hex), which states each channel.
+  color-no-hex: true
+  color-no-invalid-hex: true
+  declaration-no-important: true
+  display-notation: short
+  font-weight-notation: numeric
+  function-linear-gradient-no-nonstandard-direction: true
+  function-no-unknown: true
+  function-url-no-scheme-relative: true
+  function-url-scheme-allowed-list: [https]
+  max-nesting-depth: 0
+  no-unknown-animations: true
+  no-unknown-custom-media: true
+  no-unknown-custom-properties: true
+  property-layout-mappings: flow-relative
+  relative-selector-nesting-notation: explicit
+  selector-max-attribute: 0
+  selector-max-class: 1
+  selector-max-combinators: 1
+  selector-max-compound-selectors: 2
+  selector-max-id: 0
+  selector-max-pseudo-class: 1
+  selector-max-specificity: 0,1,1
+  selector-max-type: 2
+  selector-max-universal: 0
+  selector-no-qualifying-type: true
+  time-min-milliseconds: 100
+  # Lengths scale with the reader's font size: no px.
+  unit-disallowed-list: [px]
+  unit-layout-mappings: flow-relative
+  unit-no-unknown: true
+  value-keyword-layout-mappings: flow-relative
+# Off, because each one enforces a project-specific vocabulary (a list or a naming pattern) and has no meaningful
+# setting for a one-file stylesheet without one: at-rule-allowed-list, at-rule-disallowed-list,
+# at-rule-property-required-list, comment-pattern, comment-word-disallowed-list,
+# declaration-property-custom-property-allowed-list, declaration-property-max-values,
+# declaration-property-unit-allowed-list, declaration-property-unit-disallowed-list,
+# declaration-property-value-allowed-list, declaration-property-value-disallowed-list, function-allowed-list,
+# function-disallowed-list, function-url-scheme-disallowed-list (function-url-scheme-allowed-list is on),
+# media-feature-name-allowed-list, media-feature-name-disallowed-list, media-feature-name-unit-allowed-list,
+# media-feature-name-value-allowed-list, property-allowed-list, property-disallowed-list,
+# rule-nesting-at-rule-required-list, rule-selector-property-disallowed-list,
+# selector-attribute-name-disallowed-list, selector-attribute-operator-allowed-list,
+# selector-attribute-operator-disallowed-list, selector-combinator-allowed-list,
+# selector-combinator-disallowed-list, selector-disallowed-list, selector-nested-pattern,
+# selector-pseudo-class-allowed-list, selector-pseudo-class-disallowed-list, selector-pseudo-element-allowed-list,
+# selector-pseudo-element-disallowed-list, unit-allowed-list (unit-disallowed-list is on),
+# value-type-custom-property-required-list.

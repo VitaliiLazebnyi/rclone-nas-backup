@@ -1,14 +1,16 @@
 body {
-  max-width: 40rem;
-  margin: 3rem auto;
-  padding: 0 1rem;
+  max-inline-size: 40rem;
+  margin-block: 3rem;
+  margin-inline: auto;
+  padding-block: 0;
+  padding-inline: 1rem;
   font:
-    16px/1.6 system-ui,
+    1rem/1.6 system-ui,
     sans-serif;
-  color: #222;
-  background: #fff;
+  color: rgb(34 34 34);
+  background: rgb(255 255 255);
 }
 
 a {
-  color: #0b57d0;
+  color: rgb(11 87 208);
 }

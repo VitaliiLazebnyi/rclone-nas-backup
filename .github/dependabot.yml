@@ -1,0 +1,33 @@
+---
+# Every ecosystem of the repository. A release must have been public for a week before it is proposed. The
+# release binaries that the workflows download (actionlint, editorconfig-checker, gitleaks, lychee, npm, shfmt)
+# are no Dependabot ecosystem: script/outdated_tools.sh (Security workflow) fails while any of them is outdated.
+updates:
+  - cooldown:
+      default-days: 7
+    directory: /
+    groups:
+      github-actions:
+        patterns: ["*"]
+    package-ecosystem: github-actions
+    schedule:
+      interval: weekly
+  - cooldown:
+      default-days: 7
+    directory: /
+    groups:
+      npm:
+        patterns: ["*"]
+    package-ecosystem: npm
+    schedule:
+      interval: weekly
+  - cooldown:
+      default-days: 7
+    directory: /tools
+    groups:
+      linters:
+        patterns: ["*"]
+    package-ecosystem: pip
+    schedule:
+      interval: weekly
+version: 2

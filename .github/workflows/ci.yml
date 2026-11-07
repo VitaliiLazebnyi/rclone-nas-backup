@@ -1,272 +1,217 @@
-name: CI
-
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-  workflow_dispatch:
-
-# Nothing is writable by default; every job re-declares the (read-only) permissions it needs.
-permissions: {}
-
+---
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
 
-# Sets git's initial branch name for the repository actions/checkout initializes; without it, git prints a
-# hint about the unset default ("...which will suppress this warning").
 env:
+  # Sets git's initial branch name for the repository actions/checkout initializes; without it, git prints a
+  # hint about the unset default ("...which will suppress this warning").
   GIT_CONFIG_COUNT: 1
   GIT_CONFIG_KEY_0: init.defaultBranch
   GIT_CONFIG_VALUE_0: main
+  # A deprecated Node.js API fails the process that calls it.
+  NODE_OPTIONS: --throw-deprecation
 
 jobs:
-  html:
-    name: HTML (html-validate, W3C Nu validator)
-    runs-on: ubuntu-26.04
+  browser:
+    name: Accessibility (pa11y, WCAG 2.2 AA) and Lighthouse
     permissions:
       contents: read
+    runs-on: ubuntu-26.04
     steps:
+      # Lifting the Chrome sandbox restriction (below) needs sudo, so sudo stays enabled in this job.
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          allowed-endpoints: >-
+            api.github.com:443 github.com:443 googlechromelabs.github.io:443 nodejs.org:443
+            objects.githubusercontent.com:443 raw.githubusercontent.com:443 registry.npmjs.org:443
+            release-assets.githubusercontent.com:443 storage.googleapis.com:443
+          egress-policy: block
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
+      # The npm of tools/releases.txt, verified against its pinned SHA-256 (rather than
+      # `npm install --global npm@...`, an install outside any lockfile).
+      - name: Install npm (tools/releases.txt)
+        run: script/install_tools.sh "${RUNNER_TEMP}/npm" npm
+      - name: Install the dependencies (package-lock.json)
+        run: npm ci
+      # Ubuntu restricts the unprivileged user namespaces that the Chrome sandbox needs; lift the restriction
+      # rather than running Chrome with --no-sandbox.
+      - name: Allow the Chrome sandbox
+        run: sudo sysctl --quiet --write kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Install the latest stable Chrome
+        run: script/install_chrome.sh "${RUNNER_TEMP}/browsers"
+      - name: Serve the site
+        run: >-
+          python3 -m http.server 8080 --bind 127.0.0.1 > "${RUNNER_TEMP}/http.log" 2>&1 &
+          curl --fail --silent --show-error --retry 10 --retry-connrefused --retry-delay 1 --output /dev/null
+          http://127.0.0.1:8080/
+      - name: pa11y (axe-core and HTML_CodeSniffer) and Lighthouse (every category 100) on every page
+        run: script/browser_audit.sh http://127.0.0.1:8080
+    timeout-minutes: 20
+
+  html:
+    name: HTML (html-validate, W3C Nu validator)
+    permissions:
+      contents: read
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          allowed-endpoints: >-
+            api.adoptium.net:443 api.github.com:443 github.com:443 nodejs.org:443 objects.githubusercontent.com:443
+            raw.githubusercontent.com:443 registry.npmjs.org:443 release-assets.githubusercontent.com:443
+          disable-sudo-and-containers: true
+          egress-policy: block
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      # The npm of tools/releases.txt, verified against its pinned SHA-256 (rather than
+      # `npm install --global npm@...`, an install outside any lockfile).
+      - name: Install npm (tools/releases.txt)
+        run: script/install_tools.sh "${RUNNER_TEMP}/npm" npm
+      - name: Install the dependencies (package-lock.json)
+        run: npm ci
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: temurin
           java-version: "27"
-      - run: npm install --global npm@12.2.2
-      - run: npm ci
       - name: html-validate
         run: node_modules/.bin/html-validate --max-warnings 0 '*.html'
       - name: W3C Nu validator (HTML, CSS and SVG; warnings are errors)
-        run: java -jar node_modules/vnu-jar/build/dist/vnu.jar --Werror --also-check-css --also-check-svg ./*.html ./*.css ./*.svg
+        run: >-
+          java -jar node_modules/vnu-jar/build/dist/vnu.jar --Werror --also-check-css --also-check-svg
+          ./*.html ./*.css ./*.svg
+    timeout-minutes: 15
 
-  lint:
-    name: Prettier, Stylelint, markdownlint
-    runs-on: ubuntu-26.04
+  links:
+    name: Links (lychee, including anchors)
     permissions:
       contents: read
+    runs-on: ubuntu-26.04
     steps:
+      # Every host that a link of the pages or of the Markdown files points to (or redirects to).
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          allowed-endpoints: >-
+            accounts.google.com:443 api.github.com:443 github.com:443 html-validate.org:443 myaccount.google.com:443
+            objects.githubusercontent.com:443 prettier.io:443 rclone.org:443 release-assets.githubusercontent.com:443
+            stylelint.io:443 validator.github.io:443 www.shellcheck.net:443
+          disable-sudo-and-containers: true
+          egress-policy: block
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install lychee (tools/releases.txt)
+        run: script/install_tools.sh "${RUNNER_TEMP}/tools" lychee
+      - env:
+          GITHUB_TOKEN: ${{ github.token }}
+        name: Check every internal link, anchor and external link
+        run: >-
+          lychee --verbose --no-progress --include-fragments --index-files index.html --root-dir "${PWD}"
+          --max-retries 3 '*.html' '*.md'
+    timeout-minutes: 15
+
+  lint:
+    name: Lint (Prettier, Stylelint, markdownlint, yamllint, ShellCheck, shfmt, EditorConfig, typos, policy)
+    permissions:
+      contents: read
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          allowed-endpoints: >-
+            api.github.com:443 files.pythonhosted.org:443 github.com:443 nodejs.org:443
+            objects.githubusercontent.com:443 pypi.org:443 raw.githubusercontent.com:443 registry.npmjs.org:443
+            release-assets.githubusercontent.com:443
+          disable-sudo-and-containers: true
+          egress-policy: block
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
-      - run: npm install --global npm@12.2.2
-      - run: npm ci
+      # The npm of tools/releases.txt, verified against its pinned SHA-256 (rather than
+      # `npm install --global npm@...`, an install outside any lockfile).
+      - name: Install npm (tools/releases.txt)
+        run: script/install_tools.sh "${RUNNER_TEMP}/npm" npm
+      - name: Install the dependencies (package-lock.json)
+        run: npm ci
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: 3.x
+      - name: Install ShellCheck, typos, yamllint and zizmor (tools/requirements.txt, pinned by hash)
+        run: >-
+          python -m pip install --quiet --disable-pip-version-check --require-hashes --only-binary :all:
+          -r tools/requirements.txt
+      - name: Install actionlint, editorconfig-checker and shfmt (tools/releases.txt, pinned by SHA-256)
+        run: script/install_tools.sh "${RUNNER_TEMP}/tools" actionlint editorconfig-checker shfmt
       - name: Prettier
         run: node_modules/.bin/prettier --check .
       - name: Stylelint
         run: node_modules/.bin/stylelint --max-warnings 0 '**/*.css'
       - name: markdownlint
         run: node_modules/.bin/markdownlint-cli2 '**/*.md'
-
-  browser:
-    name: Accessibility (pa11y, WCAG 2.2 AA) and Lighthouse
-    runs-on: ubuntu-26.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .node-version
-      - run: npm install --global npm@12.2.2
-      - run: npm ci
-      # Ubuntu restricts the unprivileged user namespaces that the Chrome sandbox needs; lift the restriction
-      # rather than running Chrome with --no-sandbox.
-      - name: Allow the Chrome sandbox
-        run: |
-          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
-            sudo sysctl --quiet --write kernel.apparmor_restrict_unprivileged_userns=0
-          fi
-      - name: Install the latest stable Chrome
-        run: |
-          chrome=$(node_modules/.bin/browsers install chrome@stable --path "$RUNNER_TEMP/browsers" | tail -n 1 | cut -d ' ' -f 2-)
-          "$chrome" --version
-          echo "CHROME_PATH=$chrome" >> "$GITHUB_ENV"
-          echo "PUPPETEER_EXECUTABLE_PATH=$chrome" >> "$GITHUB_ENV"
-      - name: Serve the site
-        run: |
-          python3 -m http.server 8080 --bind 127.0.0.1 > "$RUNNER_TEMP/http.log" 2>&1 &
-          curl --fail --silent --show-error --retry 10 --retry-connrefused --retry-delay 1 --output /dev/null http://127.0.0.1:8080/
-      - name: pa11y with axe-core (WCAG 2.0, 2.1 and 2.2 A and AA, best practices)
-        run: |
-          for page in / /privacy.html; do
-            node_modules/.bin/pa11y --config pa11y/axe.json "http://127.0.0.1:8080${page}"
-          done
-      - name: pa11y with HTML_CodeSniffer (WCAG 2 AA)
-        run: |
-          for page in / /privacy.html; do
-            node_modules/.bin/pa11y --config pa11y/htmlcs.json "http://127.0.0.1:8080${page}"
-          done
-      - name: Lighthouse (accessibility, best practices and SEO must all score 100)
-        run: |
-          status=0
-          for page in index privacy; do
-            url=http://127.0.0.1:8080/
-            [ "$page" = index ] || url="${url}${page}.html"
-            report="$RUNNER_TEMP/lighthouse-${page}.json"
-            node_modules/.bin/lighthouse "$url" --quiet --chrome-flags=--headless=new \
-              --only-categories=accessibility,best-practices,seo --output=json --output-path="$report"
-            jq --raw-output '"\(.finalDisplayedUrl)", (.categories[] | "  \(.title): \(.score * 100)")' "$report"
-            jq --raw-output '.audits[] | select(.score != null and .score < 1) | "  failed audit: \(.id) (\(.title))"' "$report"
-            jq --raw-output '.runWarnings[] | "  run problem: \(.)"' "$report"
-            jq --exit-status '([.categories[].score] | all(. == 1)) and (.runWarnings | length == 0)' "$report" > /dev/null || status=1
-          done
-          exit "$status"
-
-  links:
-    name: Links (lychee, including anchors)
-    runs-on: ubuntu-26.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      # The archive is verified against its published SHA-256 before it is run.
-      - name: Install lychee 0.24.2
-        env:
-          LYCHEE_VERSION: 0.24.2
-          LYCHEE_SHA256: 1f4e0ef7f6554a6ed33dd7ac144fb2e1bbed98598e7af973042fc5cd43951c9a # lychee-x86_64-unknown-linux-gnu.tar.gz
-        run: |
-          archive=lychee-x86_64-unknown-linux-gnu.tar.gz
-          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/$archive" \
-            "https://github.com/lycheeverse/lychee/releases/download/lychee-v${LYCHEE_VERSION}/$archive"
-          echo "$LYCHEE_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict
-          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" --strip-components 1 lychee-x86_64-unknown-linux-gnu/lychee
-      - name: Check every internal link, anchor and external link
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          "$RUNNER_TEMP/lychee" --verbose --no-progress --include-fragments --index-files index.html --root-dir "$PWD" \
-            --max-retries 3 '*.html' '*.md'
-
-  typos:
-    name: Spelling (typos)
-    runs-on: ubuntu-26.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      # typos publishes no checksum file; the SHA-256 is that of the release archive at the time it was pinned.
-      - name: Install typos 1.52.0
-        env:
-          TYPOS_VERSION: 1.52.0
-          TYPOS_SHA256: 6155d4114f9a0f5b8f6d4fda96266c9d5f6add71df80da7f684ee5e72eb14588 # typos-v1.52.0-x86_64-unknown-linux-musl.tar.gz
-        run: |
-          archive="typos-v${TYPOS_VERSION}-x86_64-unknown-linux-musl.tar.gz"
-          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/$archive" \
-            "https://github.com/crate-ci/typos/releases/download/v${TYPOS_VERSION}/$archive"
-          echo "$TYPOS_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict
-          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP"
-      - run: '"$RUNNER_TEMP/typos" --format brief'
-
-  gitleaks:
-    name: Secret scanning (gitleaks)
-    runs-on: ubuntu-26.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      # The pinned release binary is run directly; the archive is verified against its published SHA-256 first.
-      - name: Install gitleaks 8.30.1
-        env:
-          GITLEAKS_VERSION: 8.30.1
-          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb # gitleaks_8.30.1_linux_x64.tar.gz
-        run: |
-          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
-          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/$archive" \
-            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/$archive"
-          echo "$GITLEAKS_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict
-          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" gitleaks
-      - name: Scan the full history for secrets
-        run: '"$RUNNER_TEMP/gitleaks" git --redact --verbose --exit-code 1 .'
-
-  actionlint:
-    name: Workflows and scripts (actionlint, ShellCheck)
-    runs-on: ubuntu-26.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      # The archive is verified against its published SHA-256 before it is run.
-      - name: Install actionlint 1.7.12
-        env:
-          ACTIONLINT_VERSION: 1.7.12
-          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8 # actionlint_1.7.12_linux_amd64.tar.gz
-        run: |
-          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
-          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/$archive" \
-            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/$archive"
-          echo "$ACTIONLINT_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict
-          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" actionlint
-      - run: '"$RUNNER_TEMP/actionlint" -color'
-      - name: ShellCheck the scripts
-        run: shellcheck --enable=all script/*.sh
-
-  policy:
-    name: No suppressions, no JavaScript
-    runs-on: ubuntu-26.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
+      - name: yamllint
+        run: yamllint --strict .
+      - name: ShellCheck (every optional check, style severity)
+        run: shellcheck --enable=all --severity=style script/*.sh .githooks/pre-commit
+      - name: shfmt (settings in .editorconfig)
+        run: shfmt --diff script/*.sh .githooks/pre-commit
+      - name: editorconfig-checker
+        run: editorconfig-checker
+      - name: typos
+        run: typos --format brief
       - name: No inline suppressions or switched-off rules
         run: script/forbidden_suppressions.sh
       - name: No JavaScript
         run: script/no_javascript.sh
-
-  dependencies:
-    name: Dependencies (npm audit, npm outdated)
-    runs-on: ubuntu-26.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .node-version
-      - run: npm install --global npm@12.2.2
-      - run: npm ci
-      - name: No known vulnerabilities
-        run: npm audit --audit-level=low
-      - name: Every dependency is on its latest version
-        run: npm outdated
+      - name: The pages link the stylesheet with its current integrity hash
+        run: script/check_integrity.sh
+    timeout-minutes: 15
 
   warning-gate:
-    name: Warning gate
     if: ${{ !cancelled() }}
-    needs: [html, lint, browser, links, typos, gitleaks, actionlint, policy, dependencies]
-    runs-on: ubuntu-26.04
+    name: Warning gate (CI)
+    needs: [browser, html, links, lint]
     permissions:
       actions: read # reads the logs of the other jobs of this run
       contents: read
+    runs-on: ubuntu-26.04
     steps:
+      # The job logs are served from Azure blob storage, to which the logs API redirects.
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          allowed-endpoints: >-
+            *.blob.core.windows.net:443 api.github.com:443 github.com:443
+          disable-sudo-and-containers: true
+          egress-policy: block
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Fail on any warning or deprecation in the logs of this run
-        env:
+      - env:
+          GATE_JOB_NAME: Warning gate (CI)
           GH_TOKEN: ${{ github.token }}
-          GATE_JOB_NAME: Warning gate
+        name: Fail on any warning or deprecation in the logs of this run
         run: script/warning_gate.sh
+    timeout-minutes: 10
+
+name: CI
+
+"on":
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Nothing is writable by default; every job re-declares the (read-only) permissions it needs.
+permissions: {}

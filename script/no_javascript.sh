@@ -8,13 +8,14 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 status=0
 scripts=$(git ls-files -- '*.js' '*.mjs' '*.cjs' '*.jsx' '*.ts' '*.mts' '*.cts' '*.tsx')
-if [[ -n "${scripts}" ]]; then
+if [[ -n ${scripts} ]]; then
   printf 'JavaScript files:\n%s\n\n' "${scripts}"
   status=1
 fi
 
-inline=$(git ls-files -z -- '*.html' '*.svg' | xargs -0 -r grep -nEHi -e '<script|[[:space:]]on[a-z]+ *=|javascript:' -- || true)
-if [[ -n "${inline}" ]]; then
+inline=$(git ls-files -z -- '*.html' '*.svg' \
+  | xargs -0 -r grep -nEHi -e '<script|[[:space:]]on[a-z]+ *=|javascript:' -- || true)
+if [[ -n ${inline} ]]; then
   printf 'Inline JavaScript:\n%s\n\n' "${inline}"
   status=1
 fi
