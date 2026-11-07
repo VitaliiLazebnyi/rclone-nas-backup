@@ -68,9 +68,12 @@ Supply chain and runners:
 - **No ESLint, unit tests, coverage or mutation testing (Stryker)**: there is no JavaScript to lint, test or
   mutate. `script/no_javascript.sh` fails the build if a script file, `<script>` element or inline event handler
   appears; add those gates together with any JavaScript.
-- **Warning gate**: one upstream log line is skipped, by its exact text: harden-runner's
-  `disable-sudo-and-containers` removes the docker-ce package, and dpkg notes that it left `/usr/libexec/docker`
-  in place. Any other dpkg warning still fails.
+- **Warning gate**: two kinds of upstream output are skipped, nothing else. One line, by its exact text:
+  harden-runner's `disable-sudo-and-containers` removes the docker-ce package, and dpkg notes that it left
+  `/usr/libexec/docker` in place (any other dpkg warning still fails). And the JSON that `ossf/scorecard-action`
+  prints (the triggering event, with its commit messages, and the SARIF results, where every check reads
+  `"problem.severity": "warning"`); the log messages of that step are still checked, and the findings go to code
+  scanning.
 - **No OpenSSF Scorecard threshold for each npm dependency**: the checked dependencies are development tools
   (Lighthouse, pa11y with Puppeteer, Stylelint, html-validate, markdownlint, Prettier) whose transitive trees
   include many small packages without a Scorecard; dependency review, `npm audit` and `npm audit signatures`
