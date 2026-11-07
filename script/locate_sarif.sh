@@ -8,4 +8,6 @@ set -euo pipefail
 sarif=${1}
 located=$(jq '(.runs[].results[]?.locations[]?.physicalLocation.artifactLocation
   | select(.uri == "no file associated with this alert")).uri = ".github/workflows/scorecard.yml"' "${sarif}")
-printf '%s\n' "${located}" > "${sarif}"
+# The action's container wrote the file as root: replace it rather than write into it.
+printf '%s\n' "${located}" > "${sarif}.located"
+mv -f "${sarif}.located" "${sarif}"

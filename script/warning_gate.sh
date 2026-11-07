@@ -13,9 +13,13 @@ set -euo pipefail
 # does not: "--max-warnings 0", tar's "--warning=...", or "--throw-deprecation" (NODE_OPTIONS, echoed by the runner
 # for every step).
 pattern='(^|[^-[:alnum:]_])(warn(ing)?\b|deprecate|deprecating|deprecation)'
-# The one upstream line that is not about this repository: harden-runner's disable-sudo-and-containers removes the
-# docker-ce package, and dpkg notes that a directory of it was left in place. Only this exact message is skipped;
-# any other dpkg warning still fails.
+# Upstream output that is not a warning about this repository; nothing else is skipped:
+# - harden-runner's disable-sudo-and-containers removes the docker-ce package, and dpkg notes that a directory of
+#   it was left in place. Only this exact message is skipped; any other dpkg warning still fails.
+# - ossf/scorecard-action prints the JSON of the triggering event (commit messages included) and of its SARIF
+#   results, in which every check has `"problem.severity": "warning"`; the findings themselves go to code
+#   scanning. Only the JSON lines of that step (those that start with a quote or a bracket) are skipped; its log
+#   messages are still checked.
 upstream="dpkg: warning: while removing docker-ce, directory '/usr/libexec/docker' not empty so not removed\$"
 
 jobs=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs?per_page=100" \
@@ -29,6 +33,11 @@ while IFS=$'\t' read -r id name; do
   log=$(curl --fail --silent --show-error --location \
     --header "Authorization: Bearer ${GH_TOKEN}" --header 'Accept: application/vnd.github+json' \
     "${GITHUB_API_URL:-https://api.github.com}/repos/${GITHUB_REPOSITORY}/actions/jobs/${id}/logs")
+  # Blank out (keeping the line numbers) the JSON lines of the scorecard-action step.
+  log=$(printf '%s\n' "${log}" | awk '
+    / ##\[group\]Run / { scorecard = index($0, "##[group]Run ossf/scorecard-action@") > 0 }
+    scorecard && /^[0-9TZ:.-]+ ([0-9\/]+ [0-9:]+ )?[ ]*["{}[\]]/ { print ""; next }
+    { print }')
   hits=$(printf '%s\n' "${log}" | grep -niE -e "${pattern}" | grep -vE -e "${upstream}" || true)
   if [[ -n ${hits} ]]; then
     printf '::error::Warnings in the log of job "%s"\n%s\n\n' "${name}" "${hits}"
