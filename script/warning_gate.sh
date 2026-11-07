@@ -9,9 +9,14 @@ set -euo pipefail
 : "${GH_TOKEN:?}" "${GITHUB_REPOSITORY:?}" "${GITHUB_RUN_ID:?}" "${GATE_JOB_NAME:?}"
 
 # Case-insensitive: "npm warn", "[warn]", "Warning:", "WARNING", "deprecated", "DEPRECATION", "::warning",
-# "##[warning]" and GitHub's "Node.js 20 actions are deprecated" all match. Neither "warnings" (as in
-# "--max-warnings 0") nor an option named "--warning=..." (tar, run by the setup actions) does.
-pattern='(^|[^-[:alnum:]_])warn(ing)?\b|deprecate|deprecation'
+# "##[warning]" and GitHub's "Node.js 20 actions are deprecated" all match. A word that is part of an option name
+# does not: "--max-warnings 0", tar's "--warning=...", or "--throw-deprecation" (NODE_OPTIONS, echoed by the runner
+# for every step).
+pattern='(^|[^-[:alnum:]_])(warn(ing)?\b|deprecate|deprecating|deprecation)'
+# The one upstream line that is not about this repository: harden-runner's disable-sudo-and-containers removes the
+# docker-ce package, and dpkg notes that a directory of it was left in place. Only this exact message is skipped;
+# any other dpkg warning still fails.
+upstream="dpkg: warning: while removing docker-ce, directory '/usr/libexec/docker' not empty so not removed\$"
 
 jobs=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs?per_page=100" \
   --jq ".jobs[] | select(.name != \"${GATE_JOB_NAME}\" and .conclusion != \"skipped\") | \"\(.id)\t\(.name)\"")
@@ -24,7 +29,7 @@ while IFS=$'\t' read -r id name; do
   log=$(curl --fail --silent --show-error --location \
     --header "Authorization: Bearer ${GH_TOKEN}" --header 'Accept: application/vnd.github+json' \
     "${GITHUB_API_URL:-https://api.github.com}/repos/${GITHUB_REPOSITORY}/actions/jobs/${id}/logs")
-  hits=$(printf '%s\n' "${log}" | grep -niE -e "${pattern}" || true)
+  hits=$(printf '%s\n' "${log}" | grep -niE -e "${pattern}" | grep -vE -e "${upstream}" || true)
   if [[ -n ${hits} ]]; then
     printf '::error::Warnings in the log of job "%s"\n%s\n\n' "${name}" "${hits}"
     status=1

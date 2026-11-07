@@ -50,6 +50,9 @@ Supply chain and runners:
   restriction with sudo; Scorecard is a container action).
 - Every job has least-privilege permissions (nothing is writable by default), a timeout, and runs with
   `NODE_OPTIONS=--throw-deprecation` where Node.js runs.
+- Python is pinned in [.python-version](.python-version). `script/outdated_tools.sh` lets it stay behind the newest
+  CPython only while a linter of `tools/requirements.txt` has no wheel for the newer version (PyYAML, which
+  yamllint needs, has none for Python 3.15 yet).
 
 ### Rules left off, and why
 
@@ -65,6 +68,9 @@ Supply chain and runners:
 - **No ESLint, unit tests, coverage or mutation testing (Stryker)**: there is no JavaScript to lint, test or
   mutate. `script/no_javascript.sh` fails the build if a script file, `<script>` element or inline event handler
   appears; add those gates together with any JavaScript.
+- **Warning gate**: one upstream log line is skipped, by its exact text: harden-runner's
+  `disable-sudo-and-containers` removes the docker-ce package, and dpkg notes that it left `/usr/libexec/docker`
+  in place. Any other dpkg warning still fails.
 - **No OpenSSF Scorecard threshold for each npm dependency**: the checked dependencies are development tools
   (Lighthouse, pa11y with Puppeteer, Stylelint, html-validate, markdownlint, Prettier) whose transitive trees
   include many small packages without a Scorecard; dependency review, `npm audit` and `npm audit signatures`

@@ -3,6 +3,13 @@ concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.ref }}
 
+env:
+  # Sets git's initial branch name for the repository actions/checkout initializes; without it, git prints a
+  # hint about the unset default ("...which will suppress this warning").
+  GIT_CONFIG_COUNT: 1
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
+
 jobs:
   # The repository's only code is its GitHub Actions workflows and actions (the site has no JavaScript), so
   # `actions` is the only CodeQL language that applies. Both query suites run.

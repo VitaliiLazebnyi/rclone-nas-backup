@@ -3,6 +3,13 @@ concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.ref }}
 
+env:
+  # Sets git's initial branch name for the repository actions/checkout initializes; without it, git prints a
+  # hint about the unset default ("...which will suppress this warning").
+  GIT_CONFIG_COUNT: 1
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
+
 jobs:
   actionlint:
     name: actionlint (with ShellCheck on every run block)
@@ -22,7 +29,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: 3.x
+          python-version-file: .python-version
       - name: Install ShellCheck, typos, yamllint and zizmor (tools/requirements.txt, pinned by hash)
         run: >-
           python -m pip install --quiet --disable-pip-version-check --require-hashes --only-binary :all:
@@ -80,7 +87,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: 3.x
+          python-version-file: .python-version
       - name: Install ShellCheck, typos, yamllint and zizmor (tools/requirements.txt, pinned by hash)
         run: >-
           python -m pip install --quiet --disable-pip-version-check --require-hashes --only-binary :all:
