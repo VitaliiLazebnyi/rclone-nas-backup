@@ -1,0 +1,89 @@
+---
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+env:
+  # Sets git's initial branch name for the repository actions/checkout initializes; without it, git prints a
+  # hint about the unset default ("...which will suppress this warning").
+  GIT_CONFIG_COUNT: 1
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
+
+jobs:
+  # The repository's only code is its GitHub Actions workflows and actions (the site has no JavaScript), so
+  # `actions` is the only CodeQL language that applies. Both query suites run.
+  analyze:
+    name: CodeQL (${{ matrix.language }}, ${{ matrix.suite }})
+    permissions:
+      actions: read # CodeQL reads workflow metadata
+      contents: read
+      security-events: write # upload the CodeQL results to code scanning
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          allowed-endpoints: >-
+            api.github.com:443 github.com:443 objects.githubusercontent.com:443
+            release-assets.githubusercontent.com:443 uploads.github.com:443
+          disable-sudo-and-containers: true
+          egress-policy: block
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          build-mode: none
+          languages: ${{ matrix.language }}
+          queries: ${{ matrix.suite }}
+          # Both suites extract the same commit and would race to save the same TRAP cache key; the loser logs
+          # "Unable to reserve cache", which the warning gate rejects.
+          trap-caching: false
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          category: /language:${{ matrix.language }}/suite:${{ matrix.suite }}
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [actions]
+        suite: [security-and-quality, security-extended]
+    timeout-minutes: 30
+
+  warning-gate:
+    if: ${{ !cancelled() }}
+    name: Warning gate (CodeQL)
+    needs: [analyze]
+    permissions:
+      actions: read # reads the logs of the other jobs of this run
+      contents: read
+    runs-on: ubuntu-26.04
+    steps:
+      # The job logs are served from Azure blob storage, to which the logs API redirects.
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          allowed-endpoints: >-
+            *.blob.core.windows.net:443 api.github.com:443 github.com:443
+          disable-sudo-and-containers: true
+          egress-policy: block
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - env:
+          GATE_JOB_NAME: Warning gate (CodeQL)
+          GH_TOKEN: ${{ github.token }}
+        name: Fail on any warning or deprecation in the logs of this run
+        run: script/warning_gate.sh
+    timeout-minutes: 10
+
+name: CodeQL
+
+"on":
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: 30 5 * * 1
+  workflow_dispatch: {}
+
+permissions: {}

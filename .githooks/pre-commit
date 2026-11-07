@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Pre-commit hook: the offline static checks of script/check.sh. Enable it with
+# `git config core.hooksPath .githooks`.
+set -euo pipefail
+
+root=$(git rev-parse --show-toplevel)
+exec "${root}/script/check.sh" --fast

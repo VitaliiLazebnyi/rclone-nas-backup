@@ -1,0 +1,7 @@
+# Linters installed by CI and script/check.sh with
+# `pip install --require-hashes --only-binary :all: -r tools/requirements.txt`.
+# Regenerate the lock with: pip-compile --generate-hashes --strip-extras tools/requirements.in
+shellcheck-py
+typos
+yamllint
+zizmor
