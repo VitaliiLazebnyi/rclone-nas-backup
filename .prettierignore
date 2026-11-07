@@ -1,0 +1,3 @@
+# Prettier always closes void elements with " />", which the W3C Nu validator reports ("Trailing slash on void
+# elements has no effect"). The pages are checked by html-validate and the Nu validator instead.
+*.html

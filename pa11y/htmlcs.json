@@ -1,0 +1,6 @@
+{
+  "standard": "WCAG2AA",
+  "runners": ["htmlcs"],
+  "includeWarnings": true,
+  "level": "warning"
+}

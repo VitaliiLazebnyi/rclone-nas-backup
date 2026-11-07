@@ -1,0 +1,29 @@
+{
+  "name": "rclone-nas-backup-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Static home page and privacy policy of rclone-nas-backup",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=26.13.0",
+    "npm": ">=12.2.1"
+  },
+  "allowScripts": {
+    "puppeteer": false,
+    "vnu-jar": false
+  },
+  "overrides": {
+    "axe-core": "4.14.0",
+    "katex": "0.19.1"
+  },
+  "devDependencies": {
+    "html-validate": "11.17.0",
+    "lighthouse": "13.6.0",
+    "markdownlint-cli2": "0.24.0",
+    "pa11y": "10.0.0",
+    "prettier": "3.9.10",
+    "stylelint": "17.16.0",
+    "stylelint-config-standard": "40.0.0",
+    "vnu-jar": "26.10.12"
+  }
+}
