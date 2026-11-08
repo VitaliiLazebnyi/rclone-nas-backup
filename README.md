@@ -94,6 +94,10 @@ script/check.sh
 The `style.css` link carries a Subresource Integrity hash: after changing the stylesheet, update both pages with
 the hash that `script/check_integrity.sh` prints.
 
+## License
+
+Released under the [MIT License](LICENSE.txt).
+
 [actionlint]: https://github.com/rhysd/actionlint
 [editorconfig-checker]: https://github.com/editorconfig-checker/editorconfig-checker
 [gitleaks]: https://github.com/gitleaks/gitleaks
